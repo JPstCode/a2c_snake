@@ -1,0 +1,6 @@
+""""""
+
+MAX_EPS = 10000
+ALGORITHM = "random"
+UPDATE_FREQ = 10
+GAMMA = 0.1
