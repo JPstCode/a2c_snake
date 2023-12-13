@@ -2,6 +2,7 @@
 
 import threading
 import os
+from queue import Queue
 
 import gym
 import tensorflow as tf
@@ -49,7 +50,7 @@ class Worker(threading.Thread):
         total_step = 1
         mem = Memory()
         while Worker.global_episode < parameters.MAX_EPS:
-            current_state = self.env.reset()
+            current_state, _ = self.env.reset()
             mem.clear()
             ep_reward = 0.0
             ep_steps = 0
@@ -64,7 +65,7 @@ class Worker(threading.Thread):
                 probs = tf.nn.softmax(logits)
 
                 action = np.random.choice(self.action_size, p=probs.numpy()[0])
-                new_state, reward, done, _ = self.env.step(action)
+                new_state, reward, done, _, _ = self.env.step(action)
                 if done:
                     reward = -1
                 ep_reward += reward
@@ -156,9 +157,9 @@ class Worker(threading.Thread):
         actions_one_hot = tf.one_hot(memory.actions, self.action_size, dtype=tf.float32)
 
         policy = tf.nn.softmax(logits)
-        entropy = tf.reduce_sum(policy * tf.log(policy + 1e-20), axis=1)
+        entropy = tf.reduce_sum(policy * tf.math.log(policy + 1e-20), axis=1)
 
-        policy_loss = tf.nn.softmax_cross_entropy_with_logits_v2(
+        policy_loss = tf.nn.softmax_cross_entropy_with_logits(
             labels=actions_one_hot, logits=logits
         )
         policy_loss *= tf.stop_gradient(advantage)
@@ -167,10 +168,11 @@ class Worker(threading.Thread):
         return total_loss
 
     def play(self):
-        env = gym.make(self.game_name).unwrapped
-        state = env.reset()
+        env = gym.make(self.game_name, render_mode='human').unwrapped
+        state = env.reset()[0]
         model = self.global_model
         model_path = os.path.join(self.save_dir, "model_{}.h5".format(self.game_name))
+        model(tf.expand_dims(state, axis=0))
         print("Loading model from: {}".format(model_path))
         model.load_weights(model_path)
         done = False
@@ -179,13 +181,13 @@ class Worker(threading.Thread):
 
         try:
             while not done:
-                env.render(mode="rgb_array")
+                jaa = env.render()
                 policy, value = model(
-                    tf.convert_to_tensor(state[None, :], dtype=tf.float32)
+                    tf.expand_dims(state, axis=0)
                 )
                 policy = tf.nn.softmax(policy)
                 action = np.argmax(policy)
-                state, reward, done, _ = env.step(action)
+                state, reward, done, _, _ = env.step(action)
                 reward_sum += reward
                 print(
                     "{}. Reward: {}, action: {}".format(
@@ -197,3 +199,30 @@ class Worker(threading.Thread):
             print("Received Keyboard Interrupt. Shutting down.")
         finally:
             env.close()
+
+if __name__ == '__main__':
+
+    game_name = "CartPole-v0"
+    env = gym.make(game_name)
+    state_size = env.observation_space.shape[0]
+    action_size = env.action_space.n
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+    res_queue = Queue()
+    idx = 0
+    save_dir = r"C:\Users\juhop\Documents\Projects\ML\Snake-AI-models\a3c"
+    global_model = ActorCriticModel(
+        state_size, action_size
+    )
+
+    worker = Worker(
+                state_size=state_size,
+                action_size=action_size,
+                global_model=global_model,
+                opt=optimizer,
+                result_queue=res_queue,
+                idx=idx,
+                game_name=game_name,
+                save_dir=save_dir,
+            )
+
+    worker.play()

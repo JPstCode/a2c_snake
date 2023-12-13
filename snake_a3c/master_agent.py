@@ -25,7 +25,7 @@ class MasterAgent:
         env = gym.make(self.game_name)
         self.state_size = env.observation_space.shape[0]
         self.action_size = env.action_space.n
-        self.opt = tf.keras.optimizers.Adam(learning_rate=0.01, use_locking=True)
+        self.opt = tf.keras.optimizers.Adam(learning_rate=0.01) #, use_locking=True)
         print(self.state_size, self.action_size)
 
         self.global_model = ActorCriticModel(
@@ -83,4 +83,5 @@ class MasterAgent:
 if __name__ == '__main__':
 
     master_agent = MasterAgent()
+    master_agent.train()
     print()

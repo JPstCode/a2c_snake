@@ -29,7 +29,7 @@ class RandomAgent:
             steps = 0
             while not done:
                 # Sample randomly from the action space and step
-                _, reward, done, _ = self.env.step(self.env.action_space.sample())
+                _, reward, done, _, _ = self.env.step(self.env.action_space.sample())
                 steps += 1
                 reward_sum += reward
             # Record statistics

@@ -14,5 +14,12 @@ def record(
 ) -> int:
     """"""
 
-    print("Do recording")
+    if episode % 100 == 0:
+        print(
+            f"Episode: {episode}, "
+            f"loss: {episode_loss}, "
+            f"reward: {episode_reward}, "
+            f"episode_steps: {episode_steps}, "
+            f"moving_average: {global_moving_average_reward}"
+        )
     return 0
