@@ -1,4 +1,5 @@
 """"""
+from pathlib import Path
 import os
 from queue import Queue
 import multiprocessing
@@ -8,34 +9,41 @@ import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
 
-from a2c import ActorCriticModel
+from snake_a3c.a2c import ActorCriticModel
 from random_agent import RandomAgent
 import parameters
 from worker import Worker
+from game_env import CNNGame as Game
 
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class MasterAgent:
     def __init__(self):
-        self.game_name = "CartPole-v0"
+        self.game_name = "Snake"
         save_dir = r"C:\Users\juhop\Documents\Projects\ML\Snake-AI-models\a3c"
         self.save_dir = save_dir
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        env = gym.make(self.game_name)
-        self.state_size = env.observation_space.shape[0]
-        self.action_size = env.action_space.n
-        self.opt = tf.keras.optimizers.Adam(learning_rate=0.01) #, use_locking=True)
-        print(self.state_size, self.action_size)
+        # env = gym.make(self.game_name)
+        env = Game(
+            frame_x_size=50,
+            frame_y_size=50,
+            show_game=False,
+            long_snake=True,
+            block_size=10,
+            step_limit=25
+        )
+        self.state_size = env.get_observation().shape
+        self.action_size = 4
+        self.opt = tf.keras.optimizers.Adam(learning_rate=0.00001) #, use_locking=True)
+        # print(self.state_size, self.action_size)
 
         self.global_model = ActorCriticModel(
             self.state_size, self.action_size
         )  # global network
-        self.global_model(
-            tf.convert_to_tensor(
-                np.random.random((1, self.state_size)), dtype=tf.float32
-            )
-        )
+        self.global_model(tf.expand_dims(env.get_observation(), axis=0))
+        self.latest_episode, self.best_score = self.global_model.load_model(output_path=Path(save_dir))
 
     def train(self):
         if parameters.ALGORITHM == "random":
@@ -55,8 +63,16 @@ class MasterAgent:
                 i,
                 game_name=self.game_name,
                 save_dir=self.save_dir,
+                best_score=self.best_score,
+                global_episode=self.latest_episode
             )
-            for i in range(multiprocessing.cpu_count())
+            # for i in range(multiprocessing.cpu_count())
+            # for i in range(10)
+            for i in range(8)
+            # for i in range(5)
+            # for i in range(3)
+            # for i in range(2)
+            # for i in range(1)
         ]
 
         for i, worker in enumerate(workers):

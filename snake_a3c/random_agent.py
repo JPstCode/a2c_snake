@@ -33,7 +33,8 @@ class RandomAgent:
                 steps += 1
                 reward_sum += reward
             # Record statistics
-            self.global_moving_average_reward = support.record(
+            # self.global_moving_average_reward = support.record(
+            support.record(
                 episode=episode,
                 episode_reward=reward_sum,
                 worker_idx=0,
