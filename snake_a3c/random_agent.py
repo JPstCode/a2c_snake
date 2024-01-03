@@ -3,7 +3,7 @@
 import gym
 from queue import Queue
 
-import support
+import snake_a3c.support
 
 
 class RandomAgent:

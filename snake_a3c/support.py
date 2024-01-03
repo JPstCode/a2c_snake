@@ -5,7 +5,7 @@ from queue import Queue
 import os
 
 
-output_path = Path(r"C:\Users\juhop\Documents\Projects\ML\Snake-AI-models\a3c")
+output_path = Path(r"C:\tmp\a2c")
 def check_log_file(worker_idx: int) -> Path:
     """"""
     filename = f"worker_{worker_idx}.txt"
@@ -46,11 +46,11 @@ def record(
         # You can write initial content to the file if needed
         file.write(f"{episode}, {episode_loss}, {episode_reward}, {episode_steps}, {global_moving_average_reward}, {score} \n")
 
-    if episode % 50 == 0:
+    if episode % 5 == 0:
 
         print(
             f"Episode: {episode}, "
-            f"loss: {episode_loss}, "
+            f"loss: {episode_loss:.3f}, "
             f"reward: {episode_reward}, "
             f"episode_steps: {episode_steps}, "
             f"moving_average: {global_moving_average_reward}, "

@@ -28,17 +28,17 @@ class Snake:
         if self.direction == direction:
             return
 
-        # if self.direction == "UP" and direction == "DOWN":
-        #     return
-        #
-        # if self.direction == "DOWN" and direction == "UP":
-        #     return
-        #
-        # if self.direction == "LEFT" and direction == "RIGHT":
-        #     return
-        #
-        # if self.direction == "RIGHT" and direction == "LEFT":
-        #     return
+        if self.direction == "UP" and direction == "DOWN":
+            return
+
+        if self.direction == "DOWN" and direction == "UP":
+            return
+
+        if self.direction == "LEFT" and direction == "RIGHT":
+            return
+
+        if self.direction == "RIGHT" and direction == "LEFT":
+            return
 
         self.direction = direction
 

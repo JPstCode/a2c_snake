@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Optional
 from collections import deque
 import sys
+import json
 
 import numpy as np
 import numpy.typing as npt
@@ -63,7 +64,7 @@ class CNNGame:
         self.prev_dist_to_food: Optional[int] = None
         self.closer = False
         self.episode: Optional[int] = None
-        self.score: Optional[int] = None
+        self.score: int = 0
         self.step: int = 0
         self.eaten_step: int = 0
         self.step_limit: int = step_limit
@@ -75,12 +76,14 @@ class CNNGame:
         self.food_position, _ = self.position_food()
         self.dist_to_food = self.get_dist_to_food()
         self.draw_elements()
-        self.score = 0
-        self.game_lost = False
         self.observation_que = deque(maxlen=4)
+        observation = self.get_observation()
         self.step = 0
         self.eaten_step = 0
-        return self.get_observation()
+        self.score = 0
+        self.game_lost = False
+
+        return observation
 
     def get_dist_to_food(self):
         return np.sqrt(
@@ -133,20 +136,21 @@ class CNNGame:
         self.snake.grow(self.food_position)
 
         self.draw_elements()
-        reward = 0.1
+
+        reward = 0.0
 
         # self.game_lost = self.check_if_lost()
         #
         # if self.game_lost:
         #     reward = 0
+        if self.check_if_lost():
+            self.game_lost = True
+            reward = -1
 
         # if self.step > self.step_limit:
         if self.eaten_step > self.step_limit:
             self.game_lost = True
-
-        if self.check_if_lost():
-            self.game_lost = True
-            reward = -10
+#            reward = 0
 
         self.step += 1
         self.eaten_step += 1
@@ -156,7 +160,7 @@ class CNNGame:
             self.snake.eaten = False
             self.food_position, done = self.position_food()
             self.game_lost = done
-            reward = 10
+            reward = 1
             self.eaten_step = 0
 
         # return self.get_observation(), reward, self.game_lost
@@ -165,8 +169,8 @@ class CNNGame:
     def position_food(self) -> (list[int, int], bool):
 
         # TODO check if won game
-        free_positions_x = np.arange(0, self.frame_x_size, 10)
-        free_positions_y = np.arange(0, self.frame_y_size, 10)
+        free_positions_x = np.arange(0, self.frame_x_size + 10, 10)
+        free_positions_y = np.arange(0, self.frame_y_size + 10, 10)
 
         free_positions = []
         for ix in free_positions_x:
@@ -235,39 +239,13 @@ class CNNGame:
         # Fill observation que
         if len(self.observation_que) == 0:
             for i in range(self.observation_que.maxlen):
-
                 self.update_game_rl()
                 self.observation_que.append(self.current_canvas / 255)
-
-
-            # finished = False
-            # for i in range(self.observation_que.maxlen):
-            # while not finished:
-            #     self.observation_que.append(self.current_canvas / 255)
-            #     direction = random.choice(['UP', 'DOWN', 'RIGHT', 'LEFT'])
-            #     self.snake.update_direction(direction=direction)
-            #     _, _, lost = self.update_game_rl()
-            #     if lost:
-            #         self.reset_game()
-            #
-            #     if len(self.observation_que) == 4:
-            #         finished = True
 
         else:
             self.observation_que.append(self.current_canvas / 255)
 
-        # for i in range(1, 5):
-        #     plt.subplot(1, 4, i)
-        #     plt.imshow(self.observation_que[i - 1])
-        #     plt.show()
-
-        # return np.asarray(list(reversed(self.observation_que)))
         return np.asarray(list(self.observation_que))
-
-        # for i in range(1, 5):
-        #     plt.subplot(1,4,i)
-        #     plt.imshow(self.observation_que[i - 1])
-        #     plt.show()
 
 def initialize_snake(
         start_x: int = 0,
@@ -276,13 +254,19 @@ def initialize_snake(
         start_direction: str = "RIGHT",
 ) -> Snake:
     """Initialize snake object"""
+
+    #with open(r"C:\tmp\a2c-long\snake.json") as f:
+    #    body = json.load(f)
+
     return Snake(
         head_position=[start_x, start_y],
+        #direction="DOWN",
+        #body=body,
         direction=start_direction,
         body=[
-            [start_x, start_y],
-            [start_x, start_y - block_size],
-            [start_x, start_y - (2 * block_size)]
+             [start_x, start_y],
+             [start_x, start_y - block_size],
+             [start_x, start_y - (2 * block_size)]
         ],
         block_size=block_size
     )

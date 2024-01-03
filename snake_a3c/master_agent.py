@@ -10,17 +10,18 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from snake_a3c.a2c import ActorCriticModel
-from random_agent import RandomAgent
-import parameters
-from worker import Worker
-from game_env import CNNGame as Game
+from snake_a3c.random_agent import RandomAgent
+from snake_a3c import parameters
+from snake_a3c.worker import Worker
+from snake_a3c.game_env import CNNGame as Game
 
 # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class MasterAgent:
     def __init__(self):
         self.game_name = "Snake"
-        save_dir = r"C:\Users\juhop\Documents\Projects\ML\Snake-AI-models\a3c"
+        save_dir = r"C:\tmp\a2c"
+        #save_dir = r"C:\tmp\a2c-long"
         self.save_dir = save_dir
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -32,11 +33,11 @@ class MasterAgent:
             show_game=False,
             long_snake=True,
             block_size=10,
-            step_limit=25
+            step_limit=50
         )
         self.state_size = env.get_observation().shape
         self.action_size = 4
-        self.opt = tf.keras.optimizers.Adam(learning_rate=0.00001) #, use_locking=True)
+        self.opt = tf.keras.optimizers.Adam(learning_rate=0.001) #, use_locking=True)
         # print(self.state_size, self.action_size)
 
         self.global_model = ActorCriticModel(
@@ -68,10 +69,10 @@ class MasterAgent:
             )
             # for i in range(multiprocessing.cpu_count())
             # for i in range(10)
-            for i in range(8)
+            # for i in range(8)
             # for i in range(5)
             # for i in range(3)
-            # for i in range(2)
+            for i in range(2)
             # for i in range(1)
         ]
 

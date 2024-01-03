@@ -1,5 +1,6 @@
 """"""
 
+import time
 import threading
 import os
 from queue import Queue
@@ -10,12 +11,12 @@ import gym
 import tensorflow as tf
 import numpy as np
 
-from a2c import ActorCriticModel
-from memory import Memory
-import parameters
-import support
-from game_env import CNNGame as Game
-from snake import rl_direction_map
+from snake_a3c.a2c import ActorCriticModel
+from snake_a3c.memory import Memory
+from snake_a3c import parameters
+from snake_a3c import support
+from snake_a3c.game_env import CNNGame as Game
+from snake_a3c.snake import rl_direction_map
 
 from matplotlib import pyplot as plt
 
@@ -30,7 +31,7 @@ class Worker(threading.Thread):
     # Set up global variables across different threads
     global_episode = 0
     # Moving average reward
-    global_reward_container = deque(maxlen=10000)
+    global_reward_container = deque(maxlen=100)
     global_moving_average_reward = 0
     best_score = 0
     save_lock = threading.Lock()
@@ -62,11 +63,12 @@ class Worker(threading.Thread):
             show_game=False,
             long_snake=True,
             block_size=10,
-            step_limit=25
+            step_limit=200
         )
         self.local_model = ActorCriticModel(self.state_size, self.action_size)
         self.local_model(tf.expand_dims(self.env.get_observation(), axis=0))
-        self.local_model.load_model(Path(r"C:\Users\juhop\Documents\Projects\ML\Snake-AI-models\a3c"))
+        self.local_model.load_model(Path(r"C:\tmp\a2c"))
+        #self.local_model.load_model(Path(r"C:\tmp\a2c-long"))
         self.save_dir = save_dir
         self.ep_loss = 0.0
         self.best_score = best_score
@@ -107,13 +109,16 @@ class Worker(threading.Thread):
                 #     reward = -10
 
                 ep_reward += reward
-                Worker.global_reward_container.append(ep_reward)
 
                 mem.store(current_state, action, reward)
+                current_state = new_state
 
                 # if time_count == parameters.UPDATE_FREQ:
                 # if time_count == parameters.UPDATE_FREQ or done:
                 if done: #and self.env.step > 10:
+
+                    Worker.global_reward_container.append(ep_reward)
+
                     # Calculate gradient wrt to local model. We do so by tracking the
                     # variables involved in computing the loss by using tf.GradientTape
                     # if time_count >= parameters.UPDATE_FREQ:
@@ -154,8 +159,8 @@ class Worker(threading.Thread):
                         )
 
                         # We must use a lock to save our model and to print to prevent data races.
-                        if ep_reward > Worker.best_score:
-                        # if Worker.global_episode % 200 == 0:
+                        # if ep_reward > Worker.best_score:
+                        if Worker.global_episode % 200 == 0:
                             with Worker.save_lock:
                                 Worker.best_score = ep_reward
                                 print(
@@ -178,7 +183,6 @@ class Worker(threading.Thread):
 
                 ep_steps += 1
                 time_count += 1
-                current_state = new_state
                 total_step += 1
 
         self.result_queue.put(None)
@@ -193,12 +197,13 @@ class Worker(threading.Thread):
 
         # Get discounted rewards
         discounted_rewards = []
-        for idx, reward in enumerate(memory.rewards):  # reverse buffer r
+        for idx, reward in enumerate(reversed(memory.rewards)):  # reverse buffer r
             reward_sum = reward + gamma * reward_sum
-            discounted_rewards.append(reward_sum)
+            discounted_rewards.append([reward_sum])
 
-        # discounted_rewards.reverse()
-        discounted_rewards = np.asarray(discounted_rewards, dtype=np.float32).reshape((len(discounted_rewards), 1))
+        discounted_rewards.reverse()
+        discounted_rewards = tf.convert_to_tensor(discounted_rewards)
+        # discounted_rewards = np.asarray(discounted_rewards, dtype=np.float32).reshape((len(discounted_rewards), 1))
         discounted_rewards = (discounted_rewards - tf.math.reduce_mean(discounted_rewards)) / (tf.math.reduce_std(discounted_rewards) + eps)
 
         action_logits_t = []
@@ -210,20 +215,15 @@ class Worker(threading.Thread):
 
         action_logits_t = tf.convert_to_tensor(action_logits_t)
         values = tf.convert_to_tensor(values)
-
-        # action_logits_t, values = self.local_model(np.vstack(tf.expand_dims(memory.states, axis=0)))
         advantage = discounted_rewards - values
 
-        # # action_log_probs = tf.math.log(action_logits_t)
         action_probs_t = tf.nn.softmax(action_logits_t)
         action_probs = []
         for idx, action in enumerate(memory.actions):
             action_probs.append(tf.expand_dims(action_probs_t[idx][action], axis=0))
 
-        # action_probs = np.asarray(action_probs).reshape(len(action_probs), 1)
         action_log_probs = tf.math.log(action_probs)
         actor_loss = -tf.math.reduce_sum(action_log_probs * advantage)
-        # actor_loss = -tf.math.reduce_sum(action_probs * advantage)
 
         critic_loss = huber_loss(values, discounted_rewards)
 
